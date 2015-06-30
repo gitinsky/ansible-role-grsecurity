@@ -1,0 +1,115 @@
+### BEGIN INIT INFO
+# Provides:          droplet-kernel
+# Required-Start:
+# Required-Stop:
+# Should-Start:      glibc
+# Default-Start:     S
+# Default-Stop:      6
+# X-Interactive:     true
+# Short-Description: Run kexec on DigitalOcean droplet
+# Description:       Runs kexec on a DigitalOcean droplet to boot a custom kernel
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+. /lib/lsb/init-functions
+
+test -r /etc/default/droplet-kernel && . /etc/default/droplet-kernel
+
+do_stop() {
+        # Don't do anything if kexec-tools are not installed
+        # or droplet-kernel is not enabled in defaults file.
+        test -x /sbin/kexec || exit 0
+        test "$ENABLED" = "true" || exit 0
+
+        # Check 'kexeced' kernel cmdline is present otherwise droplet
+        # wasn't booted with a custom kernel via kexec.
+        if grep -q ' kexeced$' /proc/cmdline; then
+
+                # Remove 'kexeced' cmdline arguement so that when the droplet
+                # is rebooted it will load and boot the custom kernel again.
+                cat /proc/cmdline | sed 's/ kexeced$//' > /root/cmdline
+                mount --bind -n -o ro /root/cmdline /proc/cmdline >/dev/null
+                kexec -u
+
+                log_action_msg "Removed 'kexeced' kernel cmdline from droplet"
+        else
+                log_action_msg "Droplet was not booted with custom kernel"
+        fi
+}
+
+do_start() {
+        # Don't do anything if kexec-tools are not installed
+        # or droplet-kernel is not enabled in defaults file.
+        test -x /sbin/kexec || exit 0
+        test "$ENABLED" = "true" || exit 0
+
+        do_status
+
+        # Check 'kexeced' kernel cmdline is not present.
+        # If it is, the droplet has already booted with kexec. This helps
+        # prevent loops.
+        if grep -qv ' kexeced$' /proc/cmdline; then
+
+                # Give the option to abort booting the droplet using kexec.
+                export KEXEC_ABORT=false
+                trap "export KEXEC_ABORT=true" 2
+                log_begin_msg "Press Ctrl+C to abort booting droplet with custom kernel"
+                sleep 10
+                trap - 2
+                log_end_msg 0
+
+                REAL_APPEND="$APPEND"
+                test -z "$REAL_APPEND" && REAL_APPEND="`cat /proc/cmdline`"
+
+                if [ "$KEXEC_ABORT" = "false" ]; then
+                        log_action_begin_msg "Loading new kernel in to droplet memory"
+                        if [ -z "$INITRD" ]; then
+                                kexec --load "$KERNEL_IMAGE" --append="$REAL_APPEND kexeced"
+                        else
+                                kexec --load "$KERNEL_IMAGE" --initrd="$INITRD" --append="$REAL_APPEND kexeced"
+                        fi
+                        log_action_end_msg $?
+
+                        log_action_begin_msg "Attempting to run droplet with custom kernel"
+                        kexec -e
+                        log_action_end_msg $?
+                fi
+        fi
+}
+
+do_status() {
+        if [ "$ENABLED" != "true" ]; then
+                log_action_msg "Custom droplet kernel is NOT enabled"
+                exit 0
+        fi
+
+        log_action_msg "Custom droplet kernel is enabled"
+
+        if grep -q 'kexeced$' /proc/cmdline; then
+                log_action_msg "Droplet was booted with a custom kernel"
+        else
+                log_action_msg "Droplet was NOT booted with a custom kernel"
+        fi
+}
+
+case "$1" in
+  start)
+        do_start
+        ;;
+  restart|reload|force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 3
+        ;;
+  stop)
+        do_stop
+        ;;
+  status)
+        do_status
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|status}" >&2
+        exit 3
+        ;;
+esac
+exit 0

@@ -43,3 +43,15 @@
 - name: install kexec
   apt: name=kexec-tools state=present
   when: we_are_on_DO|default(False)
+
+- name: install droplet-kernel script
+  template: src=droplet-kernel dest=/etc/init.d/droplet-kernel mode=0755
+  when: we_are_on_DO|default(False)
+
+- name: install /etc/default/droplet-kernel
+  template: src=droplet-kernel-default dest=/etc/default/droplet-kernel
+  when: we_are_on_DO|default(False)
+
+- name: enable droplet-kernel service
+  service: name=droplet-kernel enabled=yes
+  when: we_are_on_DO|default(False)

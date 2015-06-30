@@ -1,0 +1,13 @@
+# Defaults for droplet-kernel initscript
+# sourced by /etc/init.d/droplet-kernel
+
+# Load a custom kernel for the droplet (true/false)
+ENABLED=true
+
+# Kernel and initrd image.
+# If no initrd image is needed, leave blank.
+KERNEL_IMAGE="/boot/vmlinuz-3.14.46-grsec"
+INITRD="/boot/initrd.img-3.14.46-grsec"
+
+# If empty, use current /proc/cmdline
+APPEND=""
