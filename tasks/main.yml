@@ -12,33 +12,33 @@
   apt: name=kernel-package state=present
 
 - name: download grsecurity patch
-  shell: cd /usr/src && wget https://grsecurity.net/stable/grsecurity-3.1-3.14.46-201506300711.patch creates=/usr/src/grsecurity-3.1-3.14.46-201506300711.patch
+  shell: cd /usr/src && wget https://grsecurity.net/stable/grsecurity-3.1-3.14.49-201508032312.patch creates=/usr/src/grsecurity-3.1-3.14.49-201508032312.patch
 
 - name: download kernel sources
-  shell: cd /usr/src && wget https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.14.46.tar.xz creates=/usr/src/linux-3.14.46.tar.xz
+  shell: cd /usr/src && wget https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.14.49.tar.xz creates=/usr/src/linux-3.14.49.tar.xz
 
 - name: unpack kernel sources
-  shell: cd /usr/src && tar xfJ linux-3.14.46.tar.xz creates=/usr/src/linux-3.14.46
+  shell: cd /usr/src && tar xfJ linux-3.14.49.tar.xz creates=/usr/src/linux-3.14.49
   register: result
 
 - name: apply grsecurity patch
-  shell: cd /usr/src/linux-3.14.46 && patch -p1 < ../grsecurity-3.1-3.14.46-201506300711.patch
+  shell: cd /usr/src/linux-3.14.49 && patch -p1 < ../grsecurity-3.1-3.14.49-201508032312.patch
   when: result.changed
 
 - name: put kernel config
-  template: src=config dest=/usr/src/linux-3.14.46/.config
+  template: src=config dest=/usr/src/linux-3.14.49/.config
 
 - name: clean kernel
-  shell: cd /usr/src/linux-3.14.46 && make-kpkg clean creates=/usr/src/linux-image-3.14.46-grsec_3.14.46-grsec-10.00.Custom_amd64.deb
+  shell: cd /usr/src/linux-3.14.49 && make-kpkg clean creates=/usr/src/linux-image-3.14.49-grsec_3.14.49-grsec-10.00.Custom_{{ ansible_architecture }}.deb
 
 - name: make kernel
-  shell: cd /usr/src/linux-3.14.46 && make-kpkg --initrd kernel_image kernel_headers creates=/usr/src/linux-image-3.14.46-grsec_3.14.46-grsec-10.00.Custom_amd64.deb
+  shell: cd /usr/src/linux-3.14.49 && make-kpkg --initrd kernel_image kernel_headers creates=/usr/src/linux-image-3.14.49-grsec_3.14.49-grsec-10.00.Custom_{{ ansible_architecture }}.deb
 
 - name: install kernel
-  apt: deb=/usr/src/linux-image-3.14.46-grsec_3.14.46-grsec-10.00.Custom_amd64.deb
+  apt: deb=/usr/src/linux-image-3.14.49-grsec_3.14.49-grsec-10.00.Custom_{{ ansible_architecture }}.deb
 
 - name: install headers
-  apt: deb=/usr/src/linux-headers-3.14.46-grsec_3.14.46-grsec-10.00.Custom_amd64.deb
+  apt: deb=/usr/src/linux-headers-3.14.49-grsec_3.14.49-grsec-10.00.Custom_{{ ansible_architecture }}.deb
 
 - name: install kexec
   apt: name=kexec-tools state=present
