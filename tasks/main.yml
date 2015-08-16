@@ -55,3 +55,35 @@
 - name: enable droplet-kernel service
   service: name=droplet-kernel enabled=yes
   when: we_are_on_DO|default(False)
+
+# We need libdemapper newer than stock 14.04 because dm_udev_get_sync_support is not implemented in the stock version
+- name: get newer libdevmapper #1
+  get_url: url=http://archive.ubuntu.com/ubuntu/pool/main/l/lvm2/lvm2_2.02.122-1ubuntu1.dsc dest=/root/lvm2_2.02.122-1ubuntu1.dsc
+
+- name: get newer libdevmapper #2
+  get_url: url=http://archive.ubuntu.com/ubuntu/pool/main/l/lvm2/lvm2_2.02.122.orig.tar.xz dest=/root/lvm2_2.02.122.orig.tar.xz
+
+- name: get newer libdevmapper #3
+  get_url: url=http://archive.ubuntu.com/ubuntu/pool/main/l/lvm2/lvm2_2.02.122-1ubuntu1.debian.tar.xz dest=/root/lvm2_2.02.122-1ubuntu1.debian.tar.xz
+
+- name: unpack libdevmapper sources
+  shell: cd /root && dpkg-source -x lvm2_2.02.122-1ubuntu1.dsc creates=/root/lvm2-2.02.122
+
+- name: install prereqs
+  apt: name={{ item }} state=present
+  with_items:
+    - debhelper
+    - automake
+    - libudev-dev
+    - pkg-config
+    - libreadline-gplv2-dev
+    - libselinux1-dev
+    - dh-systemd
+    - libcorosync-dev
+    - libdlm-dev
+
+- name: build libdevmapper
+  shell: cd /root/lvm2-2.02.122 && dpkg-buildpackage creates=/root/libdevmapper1.02.1_1.02.99-1ubuntu1_amd64.deb
+
+- name: install new libdevmapper
+  shell: dpkg -i /root/dmsetup_1.02.99-1ubuntu1_amd64.deb /root/libdevmapper1.02.1_1.02.99-1ubuntu1_amd64.deb
